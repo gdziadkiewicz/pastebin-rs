@@ -1,5 +1,5 @@
 use paste_id::PasteId;
-use rocket::{data::ByteUnit, delete, get, http::{uri::Absolute, ContentType, Status}, launch, post, response::{content::RawText, status::{self, NoContent}}, routes, tokio::fs::File, uri, Data};
+use rocket::{data::ByteUnit, delete, get, http::{uri::Absolute, ContentType, Status}, post, response::status::{self, NoContent}, routes, tokio::fs::File, uri, Data};
 
 mod paste_id;
 
@@ -48,7 +48,29 @@ async fn upload(paste: Data<'_>) ->  std::io::Result<(Status, (ContentType,Strin
     Ok((status, (ct, new_url)))
 }
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, retrieve, upload, delete])
+async fn clean() -> std::io::Result<()> {
+    rocket::tokio::fs::remove_dir_all("upload").await?;
+    rocket::tokio::fs::create_dir("upload").await?;
+    Ok(())
 }
+
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
+    let _cleaner = rocket::tokio::spawn(async {
+        loop {
+            rocket::tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            clean().await.unwrap_or_else(|e| println!("Error {:?}", e));
+        }
+    });
+    let _rocket = rocket::build()
+        .mount("/", routes![index, retrieve, upload, delete])
+        .launch()
+        .await?;
+
+    Ok(())
+}
+
+// #[launch]
+// fn rocket() -> _ {
+//     rocket::build().mount("/", routes![index, retrieve, upload, delete])
+// }

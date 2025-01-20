@@ -10,5 +10,5 @@ TODO:
 * [ ] Add a PUT /<id> route that allows a user with the key for <id> to replace the existing paste, if any.
 * [ ] Add a new route, GET /<id>/<lang> that syntax highlights the paste with ID <id> for language <lang>. If <lang> is not a known language, do no highlighting. Possibly validate <lang> with * FromParam.
 * [ ] Use the local module to write unit tests for your pastebin.
-* [ ] Dispatch a thread before launching Rocket in main that periodically cleans up idling old pastes in upload/.
+* [x] Dispatch a thread before launching Rocket in main that periodically cleans up idling old pastes in upload/.
 * [x] Set the Content-Type of the return value in upload and retrieve to text/plain.
