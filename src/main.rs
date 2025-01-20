@@ -1,5 +1,5 @@
 use paste_id::PasteId;
-use rocket::{data::ByteUnit, delete, get, http::{uri::Absolute, ContentType}, launch, post, response::{content::RawText, status::{self, NoContent}}, routes, tokio::fs::File, uri, Data};
+use rocket::{data::ByteUnit, delete, get, http::{uri::Absolute, ContentType, Status}, launch, post, response::{content::RawText, status::{self, NoContent}}, routes, tokio::fs::File, uri, Data};
 
 mod paste_id;
 
@@ -26,6 +26,7 @@ async fn retrieve(id: PasteId<'_>) -> (ContentType, Option<File>) {
 
 #[delete("/<id>")]
 async fn delete(id: PasteId<'_>) -> status::NoContent {
+    let _ = rocket::tokio::fs::remove_file(id.file_path()).await;
     status::NoContent
 }
 
@@ -34,13 +35,20 @@ const ID_LENGTH: usize = 3;
 const HOST: Absolute<'static> = uri!("http://localhost:8000");
 
 #[post("/", data = "<paste>")]
-async fn upload(paste: Data<'_>) ->  std::io::Result<(ContentType,String)> {
+async fn upload(paste: Data<'_>) ->  std::io::Result<(Status, (ContentType,String))> {
+    let ct = ContentType::Text;
     let id = PasteId::new(ID_LENGTH);
-    paste.open(ByteUnit::Megabyte(2)).into_file(id.file_path()).await?;
-    Ok((ContentType::Text, uri!(HOST, retrieve(id)).to_string()))
+    let file = paste.open(ByteUnit::Megabyte(2)).into_file(id.file_path()).await?;
+    let status = 
+        match file.is_complete() {
+            true => Status::Created,
+            false => Status::PartialContent,
+        };
+    let new_url = uri!(HOST, retrieve(id)).to_string();
+    Ok((status, (ct, new_url)))
 }
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, retrieve, upload])
+    rocket::build().mount("/", routes![index, retrieve, upload, delete])
 }

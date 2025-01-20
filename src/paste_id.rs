@@ -2,15 +2,12 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use rand::{self, Rng};
-use rocket::http::Status;
-use rocket::request::{self, FromParam, FromRequest, Outcome, Request};
+use rocket::request::FromParam;
 use rocket::UriDisplayPath;
 
 /// A _probably_ unique paste ID.
 #[derive(UriDisplayPath)]
 pub struct PasteId<'a>(pub Cow<'a, str>);
-
-pub struct ExistingPasteId<'a>(pub PasteId<'a>);
 
 impl PasteId<'_> {
     /// Generate a _probably_ unique ID with `size` characters. For readability,
@@ -47,29 +44,5 @@ impl<'a> FromParam<'a> for PasteId<'a> {
         param.chars().all(|c| c.is_ascii_alphanumeric())
             .then(|| PasteId(param.into()))
             .ok_or(param)
-    }
-}
-
-// impl<'a> FromParam<'a> for ExistingPasteId<'a> {
-//     type Error = &'a str;
-
-//     fn from_param(param: &'a str) -> Result<Self, Self::Error> {
-//         let paste_id = PasteId::from_param(param)?;
-//         let file_path = paste_id.file_path();
-//         if rocket::tokio::fs::try_exists(file_path).await? {
-//             Ok(ExistingPasteId(paste_id))
-//         } else {
-//             Err("pies")
-//         }
-        
-//     }
-// }
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for PasteId<'r> {
-    type Error = &'r str;
-
-    async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        Outcome::Error((Status::NotFound, ""))
     }
 }
